@@ -29,6 +29,21 @@ print("Most Volatile Company:")
 print("Company:", max_variation_company["Petrol_company"])
 print("Average Daily Price Variation:", max_variation_company["Avg_Daily_Variation"])
 
+data_t1 = [
+    ("Most Stable Company", min_variation_company["Petrol_company"], min_variation_company["Avg_Daily_Variation"]),
+    ("Most Volatile Company", max_variation_company["Petrol_company"],  max_variation_company["Avg_Daily_Variation"])
+]
+schema_t1 = ["Category", "Company", "Average_Daily_Price_Variation"]
+df_t1 = spark.createDataFrame(data_t1, schema_t1)
+
+jdbc_url = "jdbc:postgresql://localhost:5432/sparkProject"
+jdbc_properties = {
+    "user": "sushan",
+    "password": "7446",
+    "driver": "org.postgresql.Driver"
+}
+df_t1.write.jdbc(url=jdbc_url, table="stable_volatile_company", mode="overwrite", properties=jdbc_properties)
+
 @udf(FloatType())
 def calculate_distance(lat1, lon1, lat2, lon2):
     return haversine((lat1, lon1), (lat2, lon2), unit=Unit.KILOMETERS)
@@ -64,5 +79,7 @@ filtered_stations_df = filtered_stations_df.withColumn(
     col("Price") - col("Price_of_Nearest_Competitor")
 )
 filtered_stations_df.show()
+
+filtered_stations_df.write.jdbc(url=jdbc_url, table="Nearest_competitor_comparision", mode="overwrite", properties=jdbc_properties)
 
 spark.stop()
