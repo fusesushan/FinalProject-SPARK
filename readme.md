@@ -63,11 +63,11 @@ To run this project, you need the following:
 
     1. Set up your Spark environment and ensure the PostgreSQL JDBC driver is available.
 
-    2. Run the `pip install -r requirements.txt` script to execute the Spark job.
+    2. Run the `pip install -r requirements.txt` script to install required libraries.
 
     3. Run preprocess_data.ipynb to convert the csv files to parquet and hence write to database.
 
-    4. Run `spark-submit --jars /<path to jar file>/postgresql-42.6.0.jar theFile.py` or theTask.ipynb (if you want to run in interactive python jupyter environment)
+    4. Run `spark-submit --jars /<path to jar file>/postgresql-42.6.0.jar theFile.py` to execute the Spark job or theTask.ipynb (if you want to run in interactive python jupyter environment)
 
 ## Questions:
 
