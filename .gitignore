@@ -1,0 +1,5 @@
+.theVenv/
+theVenv
+.theVenv
+data/cleaned_fuel_prices.parquet
+data/cleaned_station_info.parquet
