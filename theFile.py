@@ -1,15 +1,47 @@
+import yaml
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, lag, avg, abs, lit, min, udf, dense_rank
+from pyspark.sql.functions import to_timestamp, col, lag, avg, abs, lit, min, udf, dense_rank
 from pyspark.sql.window import Window
 from haversine import haversine, Unit
 from pyspark.sql.types import FloatType
+
+yaml_file_path = 'credentials.yaml'
+with open(yaml_file_path, 'r') as yaml_file:
+    config = yaml.safe_load(yaml_file)
 
 spark = SparkSession.builder.appName('finalproject')\
         .config('spark.driver.extraClassPath','/usr/lib/jvm/java-17-openjdk-amd64/lib/postgresql-42.6.0.jar')\
         .getOrCreate()
 
-hourlyPrices_df = spark.read.format('jdbc').options(url="jdbc:postgresql://localhost:5432/sparkProject", driver = 'org.postgresql.Driver', dbtable='hourly_gasoline_prices', user='sushan',password='7446').load()
-stationInfo_df = spark.read.format('jdbc').options(url="jdbc:postgresql://localhost:5432/sparkProject", driver = 'org.postgresql.Driver', dbtable='fuel_station_information', user='sushan',password='7446').load()
+stationInfo_df = spark.read.csv("data/Fuel_Station_Information.csv", header=True, inferSchema=True)
+hourlyPrices_df = spark.read.csv("data/Hourly_Gasoline_Prices.csv", header=True, inferSchema=True)
+hourlyPrices_df = hourlyPrices_df.dropDuplicates()
+stationInfo_df = stationInfo_df.dropDuplicates()
+hourlyPrices_df = hourlyPrices_df.dropna()
+stationInfo_df = stationInfo_df.dropna()
+hourlyPrices_df = hourlyPrices_df.withColumn("Date", to_timestamp(col("Date"), "yyyy-MM-dd HH:mm:ss"))
+hourlyPrices_df.write.parquet("data/cleaned_fuel_prices.parquet", mode= "overwrite", compression= "snappy")
+stationInfo_df.write.parquet("data/cleaned_station_info.parquet", mode= "overwrite", compression= "snappy")
+
+# Read the Parquet files
+hourlyPrices_df = spark.read.parquet("data/cleaned_fuel_prices.parquet")
+stationInfo_df = spark.read.parquet("data/cleaned_station_info.parquet")
+stationInfo_df = stationInfo_df.withColumn("Latitude", stationInfo_df["Latitude"].cast(FloatType()))
+stationInfo_df = stationInfo_df.withColumn("Longitudine", stationInfo_df["Longitudine"].cast(FloatType()))
+# Define the JDBC connection properties
+jdbc_url = "jdbc:postgresql://localhost:5432/sparkProject"
+jdbc_properties = {
+    "user": config['postgres']["user"],
+    "password": str(config['postgres']["password"]),
+    "driver": "org.postgresql.Driver"
+}
+# Save DataFrames to PostgreSQL tables
+hourlyPrices_df.write.jdbc(url=jdbc_url, table="hourly_gasoline_prices", mode="overwrite", properties=jdbc_properties)
+stationInfo_df.write.jdbc(url=jdbc_url, table="fuel_station_information", mode="overwrite", properties=jdbc_properties)
+
+# Read DataFrames to PostgreSQL tables
+hourlyPrices_df = spark.read.format('jdbc').options(url="jdbc:postgresql://localhost:5432/sparkProject", driver = 'org.postgresql.Driver', dbtable='hourly_gasoline_prices', user=config['postgres']["user"],password=str(config['postgres']["password"])).load()
+stationInfo_df = spark.read.format('jdbc').options(url="jdbc:postgresql://localhost:5432/sparkProject", driver = 'org.postgresql.Driver', dbtable='fuel_station_information', user=config['postgres']["user"],password=str(config['postgres']["password"])).load()
 
 df_forAvg = hourlyPrices_df.join(stationInfo_df.select("Id", "Petrol_company"), "Id")
 window_spec = Window.partitionBy("Petrol_company").orderBy("Date")
@@ -38,8 +70,8 @@ df_t1 = spark.createDataFrame(data_t1, schema_t1)
 
 jdbc_url = "jdbc:postgresql://localhost:5432/sparkProject"
 jdbc_properties = {
-    "user": "sushan",
-    "password": "7446",
+    "user": config['postgres']["user"],
+    "password": str(config['postgres']["password"]),
     "driver": "org.postgresql.Driver"
 }
 df_t1.write.jdbc(url=jdbc_url, table="stable_volatile_company", mode="overwrite", properties=jdbc_properties)

@@ -46,7 +46,6 @@ This dataset contains hourly gasoline prices for different fuel stations.
 ## The directory
 
 - **data**: This folder contains csv data downloaded from the above mentioned source.
-- **preprocess_data.ipynb**: This notebook is for preprocessing the csv data, convert it to parquet file and then write that parquet file to database.
 - **theFile.py**: This python script is to run with spark-submit.
 - **theTask.ipynb**: This notebook is for the tasks provided.
 
